@@ -117,7 +117,12 @@ public class UIManager : MonoBehaviour
     async Task UserStateChangedHandler(bool loggedIn)
     {
         this.loggedIn = loggedIn;
-        userStateUI.text = loggedIn ? "User Logged In" : "User Logged Out";
+
+        string userEmail = " anonynous";
+        if (client.Auth.UserInfo is not null && !string.IsNullOrEmpty(client.Auth.UserInfo.Email))
+            userEmail = $" ({client.Auth.UserInfo.Email})";
+        
+        userStateUI.text = loggedIn ? "User Logged In" + userEmail : "User Logged Out";
         userStateButtonTextUI.text = loggedIn ? "Logout" : "Sign In";
 
         if (!loggedIn)
