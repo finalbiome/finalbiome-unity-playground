@@ -18,6 +18,10 @@ public class FinalBiomeManager : MonoBehaviour
     public string Endpoint = "ws://127.0.0.1:9944";
     public string GameAddressSS58Format = "5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw";
     internal ClientConfig config;
+    /// <summary>
+    /// Instance of the FinalBiome Client
+    /// </summary>
+    /// <value></value>
     public Client Client { get; internal set; }
 
     /// <summary>
