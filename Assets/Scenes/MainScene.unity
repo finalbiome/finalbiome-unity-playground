@@ -771,7 +771,7 @@ GameObject:
   - component: {fileID: 842745657}
   - component: {fileID: 842745656}
   m_Layer: 5
-  m_Name: Button
+  m_Name: Button SignIn
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -844,7 +844,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2018321054}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: SignIn
+        m_MethodName: OnClickSignInButton
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2174,7 +2174,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2018321054}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: OnClickButtonBuy
+        m_MethodName: OnClickBuyButton
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -3231,7 +3231,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 2018321054}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
-        m_MethodName: Onboard
+        m_MethodName: OnClickOnboardButton
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
