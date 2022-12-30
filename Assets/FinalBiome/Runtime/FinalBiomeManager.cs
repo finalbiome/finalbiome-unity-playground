@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
@@ -15,14 +16,23 @@ public class FinalBiomeManager : MonoBehaviour
 
     private static FinalBiomeManager _instance;
 
-    public string Endpoint = "ws://127.0.0.1:9944";
-    public string GameAddressSS58Format = "5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw";
     internal ClientConfig config;
+    private Client _client;
     /// <summary>
     /// Instance of the FinalBiome Client
     /// </summary>
     /// <value></value>
-    public Client Client { get; internal set; }
+    public Client Client {
+        get
+        {
+            if (_client is null) throw new System.Exception("Client not initialized. Run Initialize() first.");
+            return _client;
+        }
+        internal set
+        {
+            _client = value;
+        }
+    }
 
     /// <summary>
     /// Contains all existing FAs in the game and their balance.
@@ -58,25 +68,34 @@ public class FinalBiomeManager : MonoBehaviour
             DontDestroyOnLoad(go);
             _instance = go.GetComponent<FinalBiomeManager>();
 
-            // init sdk
-            _instance.config = new(_instance.GameAddressSS58Format, _instance.Endpoint)
-            {
-                PersistenceDataPath = Application.persistentDataPath
-            };
-            _instance.Client = await Client.Create(_instance.config);
-            // listen signing in
-            _instance.Client.Auth.StateChanged += _instance.UserStateChangedHandler;
-            // listen Fa balances changes
-            _instance.Client.Fa.FaBalanceChanged += _instance.FaBalanceChangedHandler;
-            // listen nfa changes
-            _instance.Client.Nfa.NfaInstanceChanged += _instance.NfaInstanceChangedHandler;
-
             return _instance;
         }
         finally
         {
             Lock.Release();
         }
+    }
+
+    /// <summary>
+    /// Initialize FinalBiome client
+    /// </summary>
+    /// <param name="config"></param>
+    /// <returns></returns>
+    public static async Task Initialize(ClientConfig config)
+    {
+        var instance = await GetInstance();
+
+        if (instance._client is not null) throw new Exception("FinalBiome Client already initialized");
+
+        instance.config = config;
+        instance.config.PersistenceDataPath = Application.persistentDataPath;
+        instance.Client = await Client.Create(instance.config);
+        // listen signing in
+        instance.Client.Auth.StateChanged += instance.UserStateChangedHandler;
+        // listen Fa balances changes
+        instance.Client.Fa.FaBalanceChanged += instance.FaBalanceChangedHandler;
+        // listen nfa changes
+        instance.Client.Nfa.NfaInstanceChanged += instance.NfaInstanceChangedHandler;
     }
 
     /// <summary>
