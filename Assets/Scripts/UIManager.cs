@@ -9,7 +9,7 @@ using UnityEngine.UI;
 
 public class UIManager : MonoBehaviour
 {
-    FinalBiomeManager manager;
+    GameManager gameManager;
     Client client;
 
     [SerializeField]
@@ -39,59 +39,45 @@ public class UIManager : MonoBehaviour
 
     uint? selectedNfaClassId;
     string selectedNfaClassDetails;
-
-    internal string balances;
-    internal string ownedNfaInstancesText;
-#nullable enable
-    internal readonly Dictionary<(uint classId, uint instanceId), AssetDetails?> ownedNfaInstances = new();
-#nullable restore
-    bool loggedIn;
     bool onboarded;
+    string userState;
+    string userStateButtonText;
 
     internal async void Start()
     {
-        // get manager
-        manager = await FinalBiomeManager.GetInstance();
-        // get client
-        client = manager.Client;
+        gameManager = await GameManager.GetInstance();
+        client = await gameManager.GetClient();
 
-        // listen signing in
-        client.Auth.StateChanged += UserStateChangedHandler;
-        // listen Fa balances changes
-        client.Fa.FaBalanceChanged += FaBalanceChangedHandler;
-        // listen nfa changes
-        client.Nfa.NfaInstanceChanged += NfaInstanceChangedHandler;
-        
-        // init UI user state
-        await UserStateChangedHandler(client.Auth.UserIsSet);
-        // show game name
-        UISetGameName(client.Game.Data.Name);
-        if (client.Auth.UserIsSet)
-        {
-            // init current Fa balances
-            FaBalancesToText();
-            NfaBalancesToText();
-        }
+        // check logging in
+        // the first check initializes all user data and rise all suitable events if the user is already logged in
+        await client.Auth.IsLoggedIn();
+
+        // set in UI the game name
+        this.gameName.text = client.Game.Data.Name;
     }
 
     // Update is called once per frame
     internal void Update()
     {
-        faBalancesUI.text = balances;
-        nfaDetailsUI.text = selectedNfaClassDetails;
-        nfaInstancesUI.text = ownedNfaInstancesText;
+        UISetLoginStateInfo();
 
-        onboardButton.interactable = loggedIn && !onboarded;
-        buyButtonNfa.interactable = loggedIn && selectedNfaClassId is not null;
+        faBalancesUI.text = gameManager.balances;
+        nfaDetailsUI.text = selectedNfaClassDetails;
+        nfaInstancesUI.text = gameManager.ownedNfaInstancesText;
+        userStateUI.text = userState;
+        userStateButtonTextUI.text = userStateButtonText;
+
+        onboardButton.interactable = gameManager.IsLoggedIn && !onboarded;
+        buyButtonNfa.interactable = gameManager.IsLoggedIn && selectedNfaClassId is not null;
     }
 
     /// <summary>
     /// Sign in to the game as a default user
     /// </summary>
     /// <returns></returns>
-    public async void SignIn()
+    public async void OnClickSignInButton()
     {
-        if (client.Auth.UserIsSet)
+        if (gameManager.IsLoggedIn)
         {
             await client.Auth.SignOut();
             buyButtonText.text = $"Buy NFA";
@@ -104,83 +90,29 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public async void Onboard()
+    public async void OnClickOnboardButton()
     {
         await client.Mx.OnboardToGame();
     }
 
-    void UISetGameName(string name)
+    /// <summary>
+    /// Set UI texts based on login state
+    /// </summary>
+    void UISetLoginStateInfo()
     {
-        this.gameName.text = name;
-    }
+        if (client is null) return;
 
-    async Task UserStateChangedHandler(bool loggedIn)
-    {
-        this.loggedIn = loggedIn;
+        bool loggedIn = gameManager.IsLoggedIn;
 
-        string userEmail = " anonynous";
-        if (client.Auth.UserInfo is not null && !string.IsNullOrEmpty(client.Auth.UserInfo.Email))
-            userEmail = $" ({client.Auth.UserInfo.Email})";
+        string userName = " anonynous";
+        if (client.Auth.UserInfo is not null)
+            userName = $" ({client.Auth.UserInfo.DisplayName ?? client.Auth.UserInfo.Email})";
         
-        userStateUI.text = loggedIn ? "User Logged In" + userEmail : "User Logged Out";
-        userStateButtonTextUI.text = loggedIn ? "Logout" : "Sign In";
-
-        if (!loggedIn)
-        {
-            balances = "";
-            ownedNfaInstancesText = "";
-            ownedNfaInstances.Clear();
-        }
+        userState = loggedIn ? "User Logged In" + userName : "User Logged Out";
+        userStateButtonText = loggedIn ? "Logout" : "Sign In";
 
         onboarded = client.Game.IsOnboarded ?? false;
-        
-        await Task.Yield();
     }
-
-    void FaBalanceChangedHandler(object o, FaBalanceChangedEventArgs e)
-    {
-        // refresh an interface if fas has bee changed
-        FaBalancesToText();
-    }
-
-    /// <summary>
-    /// Makes string as a list of FAs
-    /// </summary>
-    void FaBalancesToText()
-    {
-        // because we need show all fa balances at once, we don't use event data,
-        // and collect all data from sdk
-        List<string> text = new();
-        foreach (var (id, balance) in manager.FaBalances)
-        {
-            text.Add($" ☼ Fa Id: {id} - {balance}");
-        }
-
-        var s = string.Join("\n", text);
-
-        balances = s;
-    }
-
-    void NfaInstanceChangedHandler(object o, NfaInstanceChangedEventArgs e)
-    {
-        // refresh an interface if nfas has bee changed
-        NfaBalancesToText();
-    }
-
-    /// <summary>
-    /// Makes string as a list of NFAs
-    /// </summary>
-    void NfaBalancesToText()
-    {
-        List<string> text = new();
-        foreach (var (classId, instanceId) in manager.NfaInstances.Keys)
-        {
-            text.Add($" ● Nfa Id: {classId}-{instanceId}");
-        }
-        var s = string.Join("\n", text);
-        ownedNfaInstancesText = s;
-    }
-
 
     public async void OnChangedNfaClass(int _)
     {
@@ -188,15 +120,14 @@ public class UIManager : MonoBehaviour
         // in other cases we need the more complicated logic
         var id = nfaClassesDropdownUI.value;
         selectedNfaClassId = (uint)id;
-        buyButtonNfa.interactable = loggedIn;
         var details = await client.Nfa.GetClassDetails((uint)selectedNfaClassId);
-        // selectedNfaClasseDetails = Newtonsoft.Json.JsonConvert.SerializeObject(details);
+
         selectedNfaClassDetails = details.ToHuman();
 
         buyButtonText.text = $"Buy NFA {id}";
     }
 
-    public async void OnClickButtonBuy()
+    public async void OnClickBuyButton()
     {
         Debug.Log("Buy NFA");
         if (selectedNfaClassId is not null)

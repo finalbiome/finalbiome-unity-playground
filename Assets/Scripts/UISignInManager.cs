@@ -6,6 +6,7 @@ using UnityEngine.UI;
 
 public class UISignInManager : MonoBehaviour
 {
+    GameManager gameManager;
     Client client;
 
     [SerializeField]
@@ -18,9 +19,10 @@ public class UISignInManager : MonoBehaviour
     internal async void Start()
     {
         // get client
-        client = (await FinalBiomeManager.GetInstance()).Client;
+        gameManager = await GameManager.GetInstance();
+        client = await gameManager.GetClient();
 
-        signInButton.interactable = !client.Auth.UserIsSet;
+        signInButton.interactable = !gameManager.IsLoggedIn;
         emailUI.onEndEdit.AddListener(delegate { InputsEditHandler(); });
     }
 
@@ -49,6 +51,6 @@ public class UISignInManager : MonoBehaviour
 
     void InputsEditHandler()
     {
-        signInButton.interactable = !client.Auth.UserIsSet && emailUI.text.Length > 0 && passwordUI.text.Length > 0;
+        signInButton.interactable = !gameManager.IsLoggedIn && emailUI.text.Length > 0 && passwordUI.text.Length > 0;
     }
 }
